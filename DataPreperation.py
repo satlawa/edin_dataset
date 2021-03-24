@@ -12,6 +12,7 @@ class DataPreperation(object):
         else:
             self.path_out_dir = path_dir + '/'
 
+
     def clip(self, path_in_grid, path_in_raster, path_out_dir, typ='ortho'):
         '''
         clip raster by grid
@@ -33,62 +34,19 @@ class DataPreperation(object):
 
         # variables for keeping track of the progress
         size = grid.shape[0]
-        percentage = 10
+        percentage = 0
 
         # loop over all the polygons
         for i in range(size):
             # keep track of the progress
             if i % (size // 10) == 0:
                 print('{}%'.format(percentage))
-                percentage += percentage
+                percentage += 10
             # get extend
             extend = grid.loc[i,'geometry'].bounds
             # set paths
             path_raster = path_in_raster
             path_out = "{}/{}{}/tile_dsm_{}.tif".format(path_out_dir, typ, sufix, grid.loc[i,'id'])
-
-            # construct bash command
-            bash_command = "gdal_translate -projwin {} {} {} {} -a_nodata 0.0 -of GTiff {} {}".format(extend[0], extend[3], extend[2], extend[1], path_raster, path_out)
-            # execute command
-            os.system(bash_command)
-
-        print("finished cilpping")
-
-
-    def clip_data(self, path_in_grid, path_in_raster, typ='ortho'):
-        '''
-        clip raster by grid
-
-        input:
-            path_in_grid (string) - path to vector (.shp) file containing polygons
-            path_in_raster (string) - path to raster (.tif) that needs to be cutted
-            path_out_dir (string) -
-            typ (string) - name of type (exp. 'ortho', 'dsm', 'dtm', 'slope')
-        '''
-
-        # load vector file
-        grid = geopandas.read_file(path_in_grid)
-
-        if typ == 'ortho':
-            sufix = ''
-        else:
-            sufix = '_1m'
-
-        # variables for keeping track of the progress
-        size = grid.shape[0]
-        percentage = 10
-
-        # loop over all the polygons
-        for i in range(size):
-            # keep track of the progress
-            if i % (size // 10) == 0:
-                print('{}%'.format(percentage))
-                percentage += percentage
-            # get extend
-            extend = grid.loc[i,'geometry'].bounds
-            # set paths
-            path_raster = path_in_raster
-            path_out = "{}/{}{}/tile_dsm_{}.tif".format(self.path_out_dir, typ, sufix, grid.loc[i,'id'])
 
             # construct bash command
             bash_command = "gdal_translate -projwin {} {} {} {} -a_nodata 0.0 -of GTiff {} {}".format(extend[0], extend[3], extend[2], extend[1], path_raster, path_out)
@@ -116,14 +74,14 @@ class DataPreperation(object):
         file_paths = self.get_file_paths(path_dir_in)
 
         size = len(file_paths)
-        percentage = 10
+        percentage = 0
 
         for i, file_path in enumerate(file_paths):
 
             # keep track of the progress
             if i % (size // 10) == 0:
                 print('{}%'.format(percentage))
-                percentage += percentage
+                percentage += 10
 
             # if file is raster file
             if file_path[-4:] == '.tif':
