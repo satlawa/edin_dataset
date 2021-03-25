@@ -20,39 +20,116 @@ class DatasetCreation(object):
             self.path_dir = path_dir + '/'
 
 
-    def find_files(self, path_in_grid, path_in_raster, path_out_dir, typ=['ortho','dsm']):
-
-        ids
-
-        sufix = typ + '/'
-        sufix_dsm = 'dsm/'
-        sufix_gt = 'ground_truth/'
-
-        # loop over all files found in directory
-        for file in os.listdir(self.dir_img+sufix):
-            # create path to ground truth
-            path_dsm = dir_img + sufix_dsm + 'tile_dsm' + file[file.rfind('_'):]
-            path_gt = dir_img + sufix_gt + 'tile_ground_truth' + file[file.rfind('_'):]
-            # if file is .tif and the ID is alo found in the grooound truth dictonary
-            if file[file.rfind('.'):] == '.tif' and os.path.isfile(path_gt) and os.path.isfile(path_dsm):
-                # add path to lists
-                ids_ortho.append(dir_img + sufix_ortho + file)
-                ids_dsm.append(path_dsm)
-                ids_ground_truth.append(path_gt)
-
-        return ids
 
 
-    def tif2array(self, input_file, dtype=np.uint8):
+    def x(self, paths, start, end, data_dtypes):
+
+        # extract data types
+        data_types = list(data_dtypes.keys())
+
+        ## read data and convert to numpy array
+        arr_512 = {}
+        for data_type in data_types:
+            # create numpy arrays
+            arr_512[data_type] = self.read_array( \
+                file_paths=paths[data_type][start:end], \
+                size=512, \
+                dtype=data_dtypes[data_type])
+
+        ## create and apply mask of ground truth
+        if 'ground_truth' in data_types:
+            # create mask
+            mask = np.ma.make_mask(arr_512['ground_truth'])
+            # apply mask
+            for data_type in data_types:
+                if data_type != 'ground_truth':
+                    arr_512[data_type] *= mask
+
+        ## set values under and over threshhold to 0
+        if 'dsm' in data_types:
+            arr_512['dsm'][arr_512['dsm'] < 0] = 0
+            arr_512['dsm'][arr_512['dsm'] > 47] = 0
+
+        ## create 256 pixel tiles
+        arr_256 = {}
+        for data_type in data_types:
+            arr_256[data_type] = np.concatenate( \
+                [arr_512[data_type][:, :256, :256], \
+                arr_512[data_type][:, 256:, :256], \
+                arr_512[data_type][:, :256, 256:], \
+                arr_512[data_type][:, 256:, 256:]], axis=0)
+
+        # free memory
+        del arr_512
+
+        ## delete tiles that are < 0.5 empty
+        key = data_types[0]
+        limit_gt = arr_256[key].shape[1] ** 2 / 2
+        limit_ortho = limit_gt * 4
+
+        idx_delete = []
+        for i in range(0,arr_256[key].shape[0]):
+            flag = False
+            for data_type in data_types:
+                if np.count_nonzero(arr_256[data_type][i]==0) > limit_ortho:
+                    flag = True
+            if flag:
+                idx_delete.append(i)
+
+
+        # delete images with just zeros
+        for data_type in data_types:
+            arr_256[data_type] = np.delete(arr_256[data_type], idx_delete, axis=0)
+
+        return(arr_256)
+
+
+    def find_files(self, dir_img, data_types):
+        """
+        find paths for provided data types
+        inputs:
+            dir_img (str) : directory path
+            data_types (list) : list of data types to be included (exp: ['ortho', 'ground_truth'])
+        return:
+            paths (dictionary) : dictionary containing file paths for each of the data types
+        """
+
+        idxs = []
+        # loop over all files found in directory and retrive indices
+        for file in os.listdir("{}{}/".format(dir_img, data_types[0])):
+            if file[-4:] == ".tif":
+                idxs.append(file[file.rfind('_'):])
+
+        paths = {}
+        for data_type in data_types:
+            paths[data_type] = []
+
+        for idx in idxs:
+
+            # check if index in all data types
+            check_path = []
+            for data_type in data_types:
+                p = "{}{}/tile_{}{}".format(dir_img, data_type, data_type, idx)
+                if os.path.isfile(p):
+                    check_path.append(p)
+
+            if len(check_path) == len(data_types):
+                for i, data_type in enumerate(data_types):
+                    paths[data_type].append(check_path[i])
+
+        return paths
+
+
+    def tif2array(self, file_path, dtype=np.uint8):
         """
         read GeoTiff and convert to numpy.ndarray.
         inputs:
-            input_file (str) : the name of input GeoTiff file.
+            file_path (str) : file path of the input GeoTiff file
         return:
             image(np.array) : image for each bands
-            dataset : for gdal's data drive.
+            dataset : for gdal's data drive
         """
-        dataset = gdal.Open(input_file, gdal.GA_ReadOnly)
+        dataset = gdal.Open(file_path, gdal.GA_ReadOnly)
 
         if dataset is None:
             return None
@@ -110,47 +187,32 @@ class DatasetCreation(object):
         return img
 
 
-    def create_array(self, ids, dtype):
+    def read_array(self, file_paths, size, dtype=np.uint8):
         """
         creates numpy array with all images stacked
         inputs:
-            ids (list) : list of paths to image files
+            file_paths (list) : list of paths to image files
+            size (int) : target pixel resolution (exp: 512)
             dtype (dtype) : dtype for storing the loaded image
         return:
-            arr (np.array) : numpy array containing all the images stacked
+            data (np.array) : numpy array containing all the images stacked
         """
         imgs = []
 
-        if dtype == np.uint8:
-            # add all
-            for i in ids:
-                # load image to numpy array
-                img = self.tif2array(i, np.uint8)
-                # cut into right shape
-                img = self.cut_img(img, 512, 512)
-                # append array to list
-                imgs.append(img)
+        # add all
+        for file_path in file_paths:
+            # load image to numpy array
+            img = self.tif2array(file_path, dtype)
+            # cut into right shape
+            img = self.cut_img(img, size, size)
+            # append array to list
+            imgs.append(img)
 
-            # convert list with arrays to numpy array
-            arr = np.stack(imgs, axis=0)
-            print(arr.shape)
+        # convert list with arrays to numpy array
+        data = np.stack(imgs, axis=0)
+        print(data.shape)
+        if dtype != np.uint8:
+             data[data < 0] = np.nan
+             data = np.nan_to_num(data)
 
-        else:
-            # add all
-            for i in ids:
-                # load image to numpy array
-                img = self.tif2array(i, dtype)
-                # cut into right shape
-                img = self.cut_img(img, 512, 512)
-                # append array to list
-                imgs.append(img)
-                x, y, z = img.shape
-
-            # convert list with arrays to numpy array
-            arr = np.stack(imgs, axis=0)
-            arr[arr < 0] = np.nan
-            print(arr.shape)
-
-            arr = np.nan_to_num(arr)
-
-        return arr
+        return data
