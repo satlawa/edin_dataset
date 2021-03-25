@@ -57,7 +57,15 @@ class DataPreperation(object):
 
 
     def get_file_paths(self, path_dir):
+        '''
+        returns all file paths in the provided directory
 
+        input:
+            path_dir (string) - path to directory
+
+        returns:
+            ids (list) - list with all file paths in the directory
+        '''
         ids = []
         # loop over all files found in directory
         for file in os.listdir(path_dir):
@@ -67,7 +75,14 @@ class DataPreperation(object):
 
 
     def align_tiles(self, path_dir, typ):
+        '''
+        converts the resolution of an tif image into the desired resolution
 
+        input:
+            path_dir (string) - path to directory
+            typ (string) - type of (exp: 'dsm')
+
+        '''
         path_dir_in = "{}{}_1m/".format(path_dir, typ)
         path_dir_out = "{}{}/".format(path_dir, typ)
 
