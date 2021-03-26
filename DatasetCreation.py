@@ -19,13 +19,64 @@ class DatasetCreation(object):
         else:
             self.path_dir = path_dir + '/'
 
+        self.data_dic = {'ortho':{'dtype':np.uint8, 'dim':4}, \
+                          'dsm':{'dtype':np.float16, 'dim':1}, \
+                          'dtm':{'dtype':np.float16, 'dim':1}, \
+                          'slope':{'dtype':np.float16, 'dim':1}, \
+                          'ground_truth':{'dtype':np.uint8, 'dim':1}}
+
+        self.data_types = ['ortho', 'dsm', 'dtm', 'slope', 'ground_truth']
 
 
+    def create_hdf5(self, path_file, tile_size, dataset_size):
+        self.path_hdf5 = path_file
+        # cerate file
+        hdf5_ds = h5py.File(path_file, 'a')
+        # create dataset
+        for data_type in self.data_types:
+            x = hdf5_ds.create_dataset(data_type, \
+            (dataset_size, tile_size, tile_size, self.data_dic[data_type]['dim']), \
+            dtype=self.data_dic[data_type]['dtype'])
+        hdf5_ds.close()
 
-    def x(self, paths, start, end, data_dtypes):
+
+    def set_hdf5(self, path_file):
+        self.path_hdf5 = path_file
+
+
+    def add_dataset_to_hdf5(self, block_size):
+        # open hdf5 file
+        hdf5_ds = h5py.File(self.path_hdf5)
+        # find paths
+        paths = self.find_files(self.path_dir, self.data_dic)
+
+        ds_size = len(paths[list(paths.keys())[0]])
+
+        if ds_size > block_size:
+            counter = 0
+            for i in range(ds_size // block_size):
+
+                print(block_size*i, block_size*(i+1))
+
+                data = self.prepare_dataset(paths, block_size*i, block_size*(i+1), self.data_types)
+
+                for data_type in self.data_types:
+                    # set dataset
+                    x = hdf5_ds[data_type]
+                    # assign data
+                    x[counter:counter+data[data_type].shape[0],:,:,:] = data[data_type]
+
+            print(block_size*(i+1), block_size*(i+1) + ds_size % block_size)
+
+
+        hdf5_ds.close()
+        print('finished')
+
+
+    def prepare_dataset(self, paths, start, end, data_dtypes):
 
         # extract data types
-        data_types = list(data_dtypes.keys())
+        data_types = self.data_types
 
         ## read data and convert to numpy array
         arr_512 = {}
@@ -34,7 +85,7 @@ class DatasetCreation(object):
             arr_512[data_type] = self.read_array( \
                 file_paths=paths[data_type][start:end], \
                 size=512, \
-                dtype=data_dtypes[data_type])
+                dtype=data_dtypes[data_type]['dtype'])
 
         ## create and apply mask of ground truth
         if 'ground_truth' in data_types:
