@@ -45,7 +45,7 @@ class DataPreperation(object):
             # get extend
             extend = grid.loc[i,'geometry'].bounds
             # set paths
-            path_out = "{}{}{}/tile_dsm_{}.tif".format(path_out_dir, typ, sufix, grid.loc[i,'id'])
+            path_out = "{}{}{}/tile_{}_{}.tif".format(path_out_dir, typ, sufix, typ, grid.loc[i,'id'])
 
             # construct bash command
             bash_command = "gdal_translate -projwin {} {} {} {} -a_nodata 0.0 -of GTiff {} {}".format(extend[0], extend[3], extend[2], extend[1], path_in_raster, path_out)
