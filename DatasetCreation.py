@@ -296,3 +296,56 @@ class DatasetCreation(object):
              data = np.nan_to_num(data)
 
         return data
+
+
+class DatasetStats(object):
+
+    def __init__(self, path_dir):
+        if path_dir[-1] == '/':
+            self.path_dir = path_dir
+        else:
+            self.path_dir = path_dir + '/'
+
+
+    def calc_mean(self, dset, data_type, start_index, end_index, block_size=10000, band=0):
+
+        ds_size = end_index - start_index
+
+        means = []
+
+        counter = start_index
+        for i in range(ds_size // block_size):
+            # calc start and end index
+            start = counter + block_size*i
+            end = counter + block_size*(i+1)
+            # append the mean
+            means.append(np.moveaxis(dset[data_type][start:end], 3, 0)[band].mean())
+        # calc start index, end index and rest
+        rest = ds_size % block_size
+        start = counter + block_size*(i+1)
+        end = end_index
+        # append the mean multiplied with the percentage (rest/block_size)
+        means.append(np.moveaxis(dset[data_type][start:end], 3, 0)[band].mean() * (rest/block_size))
+        # calc the mean
+        mean = sum(means) / (len(means)-1+(rest/block_size))
+
+        return mean
+
+
+    def calc_std(self, mean, dset, data_type, start, end, block_size=10000, band=0, scaler=1):
+
+        #ds_size = end_index - start_index
+
+        # sum squared difference
+        sum_sqr = list()
+        for i in range(end//block_size):
+            sum_sqr.append(((np.moveaxis(dset[data_type][start+(i)*block_size:start+(i+1)*block_size], 3, 0)[band]/scaler - (mean/scaler))**2).sum())
+        sum_sqr.append(((np.moveaxis(dset[data_type][start+(i+1)*block_size:end], 3, 0)[band]/scaler - (mean/scaler))**2).sum())
+
+        # count records
+        sum_n = list()
+        for i in range(end//block_size):
+            sum_n.append(np.moveaxis(dset[data_type][start+(i)*block_size:start+(i+1)*block_size], 3, 0)[band].size)
+        sum_n.append(np.moveaxis(dset[data_type][start+(i+1)*block_size:end], 3, 0)[band].size)
+
+        return (sum(sum_sqr)/sum(sum_n))**(1/2)*scaler
