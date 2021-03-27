@@ -19,6 +19,7 @@ class DatasetCreation(object):
         else:
             self.path_dir = path_dir + '/'
 
+        # set standard data_dic
         self.data_dic = {'ortho':{'dtype':np.uint8, 'dim':4}, \
                           'dsm':{'dtype':np.float16, 'dim':1}, \
                           'dtm':{'dtype':np.float16, 'dim':1}, \
@@ -26,6 +27,18 @@ class DatasetCreation(object):
                           'ground_truth':{'dtype':np.uint8, 'dim':1}}
 
         self.data_types = ['ortho', 'dsm', 'dtm', 'slope', 'ground_truth']
+
+
+    def set_input_dir(self, path_dir):
+        if path_dir[-1] == '/':
+            self.path_dir = path_dir
+        else:
+            self.path_dir = path_dir + '/'
+
+
+    def set_data_types(self, data_dic):
+        self.data_dic = data_dic
+        self.data_types = list(data_dic.keys())
 
 
     def create_hdf5(self, path_file, tile_size, dataset_size):
@@ -41,32 +54,48 @@ class DatasetCreation(object):
 
 
     def set_hdf5(self, path_file):
+        #TODO: check if file exist
         self.path_hdf5 = path_file
 
 
-    def add_dataset_to_hdf5(self, block_size):
+    def add_dataset_to_hdf5(self, block_size, start_index=0):
         # open hdf5 file
-        hdf5_ds = h5py.File(self.path_hdf5)
+        hdf5_ds = h5py.File(self.path_hdf5, 'a')
         # find paths
-        paths = self.find_files(self.path_dir, self.data_dic)
+        paths = self.find_files(self.path_dir, self.data_types)
 
         ds_size = len(paths[list(paths.keys())[0]])
 
+        # TODO add else
+        # refracture code no dublicate
         if ds_size > block_size:
-            counter = 0
+            counter = start_index
             for i in range(ds_size // block_size):
 
                 print(block_size*i, block_size*(i+1))
 
-                data = self.prepare_dataset(paths, block_size*i, block_size*(i+1), self.data_types)
+                data = self.prepare_dataset(paths, block_size*i, block_size*(i+1), self.data_dic)
 
                 for data_type in self.data_types:
                     # set dataset
                     x = hdf5_ds[data_type]
                     # assign data
                     x[counter:counter+data[data_type].shape[0],:,:,:] = data[data_type]
+                # update counter
+                counter += data[data_type].shape[0]
+                print(counter)
 
             print(block_size*(i+1), block_size*(i+1) + ds_size % block_size)
+            data = self.prepare_dataset(paths, block_size*(i+1), ds_size, self.data_dic)
+
+            for data_type in self.data_types:
+                # set dataset
+                x = hdf5_ds[data_type]
+                # assign data
+                x[counter:counter+data[data_type].shape[0],:,:,:] = data[data_type]
+
+            counter += data[data_type].shape[0]
+            print(counter)
 
 
         hdf5_ds.close()
