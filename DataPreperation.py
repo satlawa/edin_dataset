@@ -108,3 +108,21 @@ class DataPreperation(object):
                 bash_command = "gdalwarp -tr 0.2 0.2 -tap " + path_in + " " + path_out
                 # execute bash command
                 os.system(bash_command)
+
+
+    def create_slope(self, input_path, output_path):
+        '''
+        computes the slope (raster) from the DTM (raster)
+
+        input:
+            input_path (string) - path to the DTM raster
+            output_path (string) - path to the slope raster to be computed
+        '''
+        if self.dtm_path is not None:
+            # create string containing bash command
+            cmd = "gdaldem slope {} {} -of GTiff".format(input_path, output_path)
+
+            # execute bash command
+            os.system(cmd)
+
+            print("Slope file created")
