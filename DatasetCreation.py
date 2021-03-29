@@ -102,7 +102,7 @@ class DatasetCreation(object):
         print('finished')
 
 
-    def prepare_dataset(self, paths, start, end, data_dtypes):
+    def prepare_dataset(self, paths, start, end, data_dtypes, tile_size=256):
 
         # extract data types
         data_types = self.data_types
@@ -130,28 +130,30 @@ class DatasetCreation(object):
             arr_512['dsm'][arr_512['dsm'] < 0] = 0
             arr_512['dsm'][arr_512['dsm'] > 47] = 0
 
-        ## create 256 pixel tiles
-        arr_256 = {}
-        for data_type in data_types:
-            arr_256[data_type] = np.concatenate( \
-                [arr_512[data_type][:, :256, :256], \
-                arr_512[data_type][:, 256:, :256], \
-                arr_512[data_type][:, :256, 256:], \
-                arr_512[data_type][:, 256:, 256:]], axis=0)
-
-        # free memory
-        del arr_512
+        if tile_size == 256:
+            ## create 256 pixel tiles
+            arr = {}
+            for data_type in data_types:
+                arr[data_type] = np.concatenate( \
+                    [arr_512[data_type][:, :256, :256], \
+                    arr_512[data_type][:, 256:, :256], \
+                    arr_512[data_type][:, :256, 256:], \
+                    arr_512[data_type][:, 256:, 256:]], axis=0)
+            # free memory
+            del arr_512
+        else:
+            arr = arr_512
 
         ## delete tiles that are < 0.5 empty
         key = data_types[0]
-        limit_gt = arr_256[key].shape[1] ** 2 / 2
+        limit_gt = arr[key].shape[1] ** 2 / 2
         limit_ortho = limit_gt * 4
 
         idx_delete = []
-        for i in range(0,arr_256[key].shape[0]):
+        for i in range(0,arr[key].shape[0]):
             flag = False
             for data_type in data_types:
-                if np.count_nonzero(arr_256[data_type][i]==0) > limit_ortho:
+                if np.count_nonzero(arr[data_type][i]==0) > limit_ortho:
                     flag = True
             if flag:
                 idx_delete.append(i)
@@ -159,9 +161,9 @@ class DatasetCreation(object):
 
         # delete images with just zeros
         for data_type in data_types:
-            arr_256[data_type] = np.delete(arr_256[data_type], idx_delete, axis=0)
+            arr[data_type] = np.delete(arr[data_type], idx_delete, axis=0)
 
-        return(arr_256)
+        return(arr)
 
 
     def find_files(self, dir_img, data_types):
@@ -189,7 +191,7 @@ class DatasetCreation(object):
             # check if index in all data types
             check_path = []
             for data_type in data_types:
-                p = "{}{}/tile_{}{}".format(dir_img, data_type, data_type, idx)
+                p = "{}{}/tile_{}{}".format(dir_img, data_type, data_type2, idx)
                 if os.path.isfile(p):
                     check_path.append(p)
 
