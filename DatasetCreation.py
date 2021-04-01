@@ -61,6 +61,8 @@ class DatasetCreation(object):
     def add_dataset_to_hdf5(self, block_size, start_index=0):
         # open hdf5 file
         hdf5_ds = h5py.File(self.path_hdf5, 'a')
+        # set tile_size
+        tile_size = hdf5_ds['ortho'].shape[1]
         # find paths
         paths = self.find_files(self.path_dir, self.data_types)
 
@@ -74,7 +76,7 @@ class DatasetCreation(object):
 
                 print(block_size*i, block_size*(i+1))
 
-                data = self.prepare_dataset(paths, block_size*i, block_size*(i+1), self.data_dic)
+                data = self.prepare_dataset(paths, block_size*i, block_size*(i+1), self.data_dic, tile_size)
 
                 for data_type in self.data_types:
                     # set dataset
@@ -86,7 +88,7 @@ class DatasetCreation(object):
                 print(counter)
 
             print(block_size*(i+1), block_size*(i+1) + ds_size % block_size)
-            data = self.prepare_dataset(paths, block_size*(i+1), ds_size, self.data_dic)
+            data = self.prepare_dataset(paths, block_size*(i+1), ds_size, self.data_dic, tile_size)
 
             for data_type in self.data_types:
                 # set dataset
@@ -191,7 +193,7 @@ class DatasetCreation(object):
             # check if index in all data types
             check_path = []
             for data_type in data_types:
-                p = "{}{}/tile_{}{}".format(dir_img, data_type, data_type2, idx)
+                p = "{}{}/tile_{}{}".format(dir_img, data_type, data_type, idx)
                 if os.path.isfile(p):
                     check_path.append(p)
 
