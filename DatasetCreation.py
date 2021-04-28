@@ -58,13 +58,13 @@ class DatasetCreation(object):
         self.path_hdf5 = path_file
 
 
-    def add_dataset_to_hdf5(self, block_size, start_index=0):
+    def add_dataset_to_hdf5(self, block_size, start_index=0, sort=False):
         # open hdf5 file
         hdf5_ds = h5py.File(self.path_hdf5, 'a')
         # set tile_size
         tile_size = hdf5_ds['ortho'].shape[1]
         # find paths
-        paths = self.find_files(self.path_dir, self.data_types)
+        paths = self.find_files(self.path_dir, self.data_types, sort)
 
         ds_size = len(paths[list(paths.keys())[0]])
 
@@ -105,7 +105,12 @@ class DatasetCreation(object):
 
 
     def prepare_dataset(self, paths, start, end, data_dtypes, tile_size=256):
-
+        
+        if tile_size == 256:
+            size = 512
+        else:
+            size = tile_size
+            
         # extract data types
         data_types = self.data_types
 
@@ -115,7 +120,7 @@ class DatasetCreation(object):
             # create numpy arrays
             arr_512[data_type] = self.read_array( \
                 file_paths=paths[data_type][start:end], \
-                size=512, \
+                size=size, \
                 dtype=data_dtypes[data_type]['dtype'])
 
         ## create and apply mask of ground truth
@@ -168,7 +173,7 @@ class DatasetCreation(object):
         return(arr)
 
 
-    def find_files(self, dir_img, data_types):
+    def find_files(self, dir_img, data_types, sort=False):
         """
         find paths for provided data types
         inputs:
@@ -183,6 +188,9 @@ class DatasetCreation(object):
         for file in os.listdir("{}{}/".format(dir_img, data_types[0])):
             if file[-4:] == ".tif":
                 idxs.append(file[file.rfind('_'):])
+
+        if sort:
+            idxs = sorted(idxs)
 
         paths = {}
         for data_type in data_types:
@@ -287,8 +295,10 @@ class DatasetCreation(object):
         for file_path in file_paths:
             # load image to numpy array
             img = self.tif2array(file_path, dtype)
-            # cut into right shape
-            img = self.cut_img(img, size, size)
+            
+            if img.shape[0] > size: 
+                # cut into right shape
+                img = self.cut_img(img, size, size)
             # append array to list
             imgs.append(img)
 

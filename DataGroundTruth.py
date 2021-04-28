@@ -35,7 +35,7 @@ class DataGroundTruth(object):
         return(ulx,uly,lrx,lry)
 
 
-    def create_raster(self, path_dir, path_shp, name_vector, name_layer):
+    def create_raster(self, path_dir, path_shp, name_vector, name_layer, dir_out="ground_truth"):
         """
         raterizes vector layer
 
@@ -44,11 +44,12 @@ class DataGroundTruth(object):
         path_shp (string) - path to vector file
         name_vector (string) - name of vector (exp. "gis_df_wwie_2020_typ_177")
         name_layer (string) - name of layer to be raterized (exp. "typ")
+        dir_out (string) - name of output directory (exp. "ground_truth") 
         """
 
         # raster paths
         path_dir_in = path_dir + "ortho/"
-        path_dir_out = path_dir + "ground_truth/"
+        path_dir_out = path_dir + "{}/".format(dir_out)
 
         # get all file paths in directory
         file_paths = self.get_file_paths(path_dir_in)
@@ -70,7 +71,7 @@ class DataGroundTruth(object):
             # get extend from taster
             c0, c3, c2, c1 = self.get_extend(path_dir_in + file_path)
 
-            path_out = path_dir_out + 'tile_ground_truth' + file_path[10:]
+            path_out = path_dir_out + 'tile_' + dir_out + file_path[10:]
 
             # create string for bash command
             bashCommand = "gdal_rasterize -l " + name_vector + " -a " + name_layer + " -tr " + str(pixel) + " " + str(pixel) + \
