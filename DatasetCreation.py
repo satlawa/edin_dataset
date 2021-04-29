@@ -58,7 +58,7 @@ class DatasetCreation(object):
         self.path_hdf5 = path_file
 
 
-    def add_dataset_to_hdf5(self, block_size, start_index=0, sort=False):
+    def add_dataset_to_hdf5(self, block_size, start_index=0, sort=False, type_mask='ground_truth'):
         # open hdf5 file
         hdf5_ds = h5py.File(self.path_hdf5, 'a')
         # set tile_size
@@ -76,7 +76,7 @@ class DatasetCreation(object):
 
                 print(block_size*i, block_size*(i+1))
 
-                data = self.prepare_dataset(paths, block_size*i, block_size*(i+1), self.data_dic, tile_size)
+                data = self.prepare_dataset(paths, block_size*i, block_size*(i+1), self.data_dic, tile_size, type_mask)
 
                 for data_type in self.data_types:
                     # set dataset
@@ -104,13 +104,13 @@ class DatasetCreation(object):
         print('finished')
 
 
-    def prepare_dataset(self, paths, start, end, data_dtypes, tile_size=256):
-        
+    def prepare_dataset(self, paths, start, end, data_dtypes, tile_size=256, type_mask='ground_truth'):
+
         if tile_size == 256:
             size = 512
         else:
             size = tile_size
-            
+
         # extract data types
         data_types = self.data_types
 
@@ -124,12 +124,12 @@ class DatasetCreation(object):
                 dtype=data_dtypes[data_type]['dtype'])
 
         ## create and apply mask of ground truth
-        if 'ground_truth' in data_types:
+        if type_mask in data_types:
             # create mask
-            mask = np.ma.make_mask(arr_512['ground_truth'])
+            mask = np.ma.make_mask(arr_512[type_mask])
             # apply mask
             for data_type in data_types:
-                if data_type != 'ground_truth':
+                if data_type != type_mask:
                     arr_512[data_type] *= mask
 
         ## set values under and over threshhold to 0
@@ -295,8 +295,8 @@ class DatasetCreation(object):
         for file_path in file_paths:
             # load image to numpy array
             img = self.tif2array(file_path, dtype)
-            
-            if img.shape[0] > size: 
+
+            if img.shape[0] > size:
                 # cut into right shape
                 img = self.cut_img(img, size, size)
             # append array to list
