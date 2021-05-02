@@ -277,6 +277,48 @@ class DatasetCreation(object):
         img = img[d['x0']:-d['x1'],d['y0']:-d['y1']]
 
         return img
+    
+    
+    def pad_img(self, img, x, y):
+        """
+        add input numpy array to the width(x) and height(y)
+        inputs:
+            img (np.array) : image as numpy array
+            x (int) : target width
+            y (int) : target height
+        return:
+            img (np.array) : image cutted to the target width(x) and height(y)
+        """
+        # set pixel sizes
+        x_i, y_i, z_i = img.shape
+        # dict to store the sliceing information
+        d = {}
+        d['x0'] = 0
+        d['x1'] = 0
+        d['y0'] = 0
+        d['y1'] = 0
+        
+        for var, var_i, key in [(x, x_i, 'x'), (y, y_i, 'y')]:
+            # if image pixel size is smaller than the target pixel size
+            if (var_i < var):
+                # if even add same amount of pixels from both sides
+                if var_i%2 == 0:
+                    sub = int(var/2 - var_i/2)
+                    d[key+'0'] = sub
+                    d[key+'1'] = sub
+                    
+                # if odd add 1 pixel more from right/bottom
+                else:
+                    sub = int(var/2 - var_i/2)
+                    d[key+'0'] = sub
+                    d[key+'1'] = sub + 1
+            else:
+                print('image too big ' + key)
+        
+        # pad image
+        img = np.pad(img, ((d['x0'], d['x1']), (d['y0'], d['y1']), (0, 0)), 'edge')
+        
+        return img
 
 
     def read_array(self, file_paths, size, dtype=np.uint8):
@@ -296,11 +338,20 @@ class DatasetCreation(object):
             # load image to numpy array
             img = self.tif2array(file_path, dtype)
 
-            if img.shape[0] > size:
+            if img.shape[0] > size or img.shape[1] > size:
                 # cut into right shape
                 img = self.cut_img(img, size, size)
+                
+            elif img.shape[0] < size or img.shape[1] < size:
+                # add padding
+                img = self.pad_img(img, size, size)
+                
+            #print(img.shape)
+            
             # append array to list
             imgs.append(img)
+            
+            
 
         # convert list with arrays to numpy array
         data = np.stack(imgs, axis=0)
