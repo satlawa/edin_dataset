@@ -143,8 +143,8 @@ class DatasetCreation(object):
             for data_type in data_types:
                 arr[data_type] = np.concatenate( \
                     [arr_512[data_type][:, :256, :256], \
-                    arr_512[data_type][:, 256:, :256], \
                     arr_512[data_type][:, :256, 256:], \
+                    arr_512[data_type][:, 256:, :256], \
                     arr_512[data_type][:, 256:, 256:]], axis=0)
             # free memory
             del arr_512
@@ -152,23 +152,23 @@ class DatasetCreation(object):
             arr = arr_512
 
         ## delete tiles that are < 0.5 empty
-        key = data_types[0]
-        limit_gt = arr[key].shape[1] ** 2 / 2
-        limit_ortho = limit_gt * 4
+        #key = data_types[0]
+        #limit_gt = arr[key].shape[1] ** 2 / 2
+        #limit_ortho = limit_gt * 4
 
-        idx_delete = []
-        for i in range(0,arr[key].shape[0]):
-            flag = False
-            for data_type in data_types:
-                if np.count_nonzero(arr[data_type][i]==0) > limit_ortho:
-                    flag = True
-            if flag:
-                idx_delete.append(i)
+        #idx_delete = []
+        #for i in range(0,arr[key].shape[0]):
+        #    flag = False
+        #    for data_type in data_types:
+        #        if np.count_nonzero(arr[data_type][i]==0) > limit_ortho:
+        #            flag = True
+        #    if flag:
+        #        idx_delete.append(i)
 
 
         # delete images with just zeros
-        for data_type in data_types:
-            arr[data_type] = np.delete(arr[data_type], idx_delete, axis=0)
+        #for data_type in data_types:
+        #    arr[data_type] = np.delete(arr[data_type], idx_delete, axis=0)
 
         return(arr)
 
