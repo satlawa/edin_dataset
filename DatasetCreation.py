@@ -58,11 +58,11 @@ class DatasetCreation(object):
         self.path_hdf5 = path_file
 
 
-    def add_dataset_to_hdf5(self, block_size, start_index=0, sort=False, type_mask='ground_truth'):
+    def add_dataset_to_hdf5(self, block_size, start_index=0, sort=False, type_mask='ground_truth', shape='ortho'):
         # open hdf5 file
         hdf5_ds = h5py.File(self.path_hdf5, 'a')
         # set tile_size
-        tile_size = hdf5_ds['ortho'].shape[1]
+        tile_size = hdf5_ds[shape].shape[1]
         # find paths
         paths = self.find_files(self.path_dir, self.data_types, sort)
 

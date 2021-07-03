@@ -27,7 +27,7 @@ class DataPreperation(object):
         # load vector file
         grid = geopandas.read_file(path_in_grid)
 
-        if data_type == 'ortho':
+        if (data_type == 'ortho') or (data_type == 'prediction'):
             sufix = ''
         else:
             sufix = '_1m'
